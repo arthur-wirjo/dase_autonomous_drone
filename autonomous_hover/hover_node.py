@@ -9,6 +9,13 @@ import select
 import termios
 import tty
 import threading
+import RPi.GPIO as GPIO
+
+SERVO_PIN = 23
+BASE_PWM_DUTY = 7.5
+PWM_STEP = 1.0
+MIN_DUTY = 2.5
+MAX_DUTY = 12.5
 
 class HoverNode(Node):
     def __init__(self):
@@ -31,6 +38,13 @@ class HoverNode(Node):
         self.target_z = 0.0
         self.current_z = 0.0
 
+        # Servo Setup
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(SERVO_PIN, GPIO.OUT)
+        self.servo_pwm = GPIO.PWM(SERVO_PIN, 50) # 50Hz
+        self.current_duty = BASE_PWM_DUTY
+        self.servo_pwm.start(self.current_duty)
+
         # Timer running at 10Hz 
         self.timer = self.create_timer(0.1, self.timer_callback)
 
@@ -39,7 +53,7 @@ class HoverNode(Node):
         self.keyboard_thread = threading.Thread(target=self.key_listener, daemon=True)
         self.keyboard_thread.start()
 
-        self.get_logger().info("Node started. Press SPACE to takeoff/land, Press ENTER to kill, Press CTRL+C to exit.")
+        self.get_logger().info("Node started\nPress SPACE to takeoff/land\nPress 'w' to increase servo duty cycle\nPress 's' to decrease servo duty cycle\nPress ENTER to kill\nPress CTRL+C to exit")
 
     def timer_callback(self):
         # Constantly publish OffboardControlMode and TrajectorySetpoint
@@ -67,10 +81,14 @@ class HoverNode(Node):
             while rclpy.ok():
                 # Wait 0.1s for a key press
                 if select.select([sys.stdin], [], [], 0.1)[0]:
-                    key = sys.stdin.read(1)
+                    key = sys.stdin.read(1).lower()
 
                     if key == ' ':
                         self.handle_spacebar()
+                    elif key == 'w':
+                        self.handle_w()
+                    elif key == 's':
+                        self.handle_s()
                     elif key in ['\r', '\n']:
                         self.handle_enter()
                     elif key == '\x03': # CTRL+C
@@ -98,6 +116,24 @@ class HoverNode(Node):
         else:
             self.get_logger().warn(f"Ignoring input. Drone is currently {self.state}...")
 
+    def handle_w(self):
+        self.current_duty += PWM_STEP
+        if self.current_duty > MAX_DUTY:
+            self.current_duty = MAX_DUTY
+            self.get_logger().warn("Servo reached max pos")
+        else:
+            self.servo_pwm.ChangeDutyCycle(self.current_duty)
+            self.get_logger().info("Servo duty cycle increased")
+        
+    def handle_s(self):
+        self.current_duty -= PWM_STEP
+        if self.current_duty < MIN_DUTY:
+            self.current_duty = MIN_DUTY
+            self.get_logger().warn("Servo reached min pos")
+        else:
+            self.servo_pwm.ChangeDutyCycle(self.current_duty)
+            self.get_logger().info("Servo duty cycle decreased")
+    
     def handle_enter(self):
         self.get_logger().error("KILL SWITCH ACTIVATED! DISARMING IMMEDIATELY")
         self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, 0.0)
@@ -138,6 +174,11 @@ class HoverNode(Node):
         msg.from_external = True
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self.vehicle_command_publisher.publish(msg)
+
+    def destroy_node(self):
+        self.servo_pwm.stop()
+        GPIO.cleanup()
+        super().destroy_node()
 
 def main(args=None):
     rclpy.init(args=args)
