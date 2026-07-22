@@ -177,6 +177,7 @@ class HoverNode(Node):
 
     def destroy_node(self):
         self.servo_pwm.stop()
+        del self.servo_pwm
         GPIO.cleanup()
         super().destroy_node()
 
