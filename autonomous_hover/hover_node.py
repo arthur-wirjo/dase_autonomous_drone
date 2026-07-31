@@ -46,7 +46,7 @@ class HoverNode(Node):
         self.servo_pwm.start(self.current_duty)
 
         # Timer running at 10Hz 
-        self.timer = self.create_timer(0.1, self.timer_callback)
+        self.timer = self.create_timer(0.05, self.timer_callback)
 
         # Keyboard Listener Setup
         self.old_terminal_settings = termios.tcgetattr(sys.stdin)
@@ -64,7 +64,7 @@ class HoverNode(Node):
         self.current_z = msg.z
 
         # Check if we reached hover altitude
-        if self.state == 'TAKING_OFF' and self.current_z <= -1.8:
+        if self.state == 'TAKING_OFF' and self.current_z <= -0.9:
             self.state = 'HOVERING'
             self.get_logger().info("Hovering stably at 2m. Ready for next command.")
 
@@ -100,12 +100,19 @@ class HoverNode(Node):
 
     def handle_spacebar(self):
         if self.state == 'GROUND':
+            if not self.has_position_lock:
+                self.get_logger().warn("Cannot take off: No local position lock yet")
+                return
+
             self.get_logger().info("SPACEBAR Pressed: Taking Off")
-            self.target_z = -2.0
+            
+            self.target_x = self.current_x
+            self.target_y = self.current_y
+            self.target_z = -1.0
             self.state = 'TAKING_OFF'
 
             # Send commands to arm and switch to offboard mode
-            self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, 1.0)
+            self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, 1.0, 21196.0)
             self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, 6.0)
 
         elif self.state == 'HOVERING':
