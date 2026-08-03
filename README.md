@@ -9,7 +9,7 @@ This repository contains the setup, configuration, and execution documentation f
 
 *   **Flight Controller:** Pixhawk 6C Mini (Holybro)
 *   **ESC:** Tekko32 AM32 4-in-1 ESC (Holybro)
-*   **Companion Computer:** Raspberry Pi 5
+*   **Flight Computer:** Raspberry Pi 5 (Ubuntu 24.04)
 *   **Power Distribution:**
     *   **PDB 1:** PM06 (Powers the flight controller and ESC)
     *   **PDB 2:** Generic 5V/5A BEC (Powers the Raspberry Pi 5)
