@@ -3,7 +3,7 @@
 
 ## DASE Autonomous Drone
 
-This repository contains the setup, configuration, and execution documentation for an autonomous quadcopter powered by a Pixhawk 6C Mini (PX4), a Raspberry Pi 5 companion computer (ROS 2 via Micro-XRCE-DDS), and an MTF-01P Optical Flow/Lidar sensor for GPS-denied indoor navigation.
+This repository contains the setup, configuration, and execution documentation for an autonomous quadcopter powered by a Pixhawk 6C Mini (PX4), a Raspberry Pi 5 flight computer (ROS 2 via Micro-XRCE-DDS), and an MTF-01P Optical Flow/Lidar sensor for GPS-denied indoor navigation.
 
 ## Hardware Architecture
 
@@ -92,7 +92,7 @@ By default, PX4 expects GPS data on the GPS 2 port. To use it for the ELRS recei
 
 ### 2. MTF-01P Sensor Setup
 *   Connect the MTF-01P to your computer using the USB to TTL adapter.
-*   Open the MicoAssistant Web Tool.
+*   Open the MicoAssistant Web Tool at https://micoair.com/assistant/ .
 *   Connect to the sensor, navigate to the parameters section, and change the protocol from `Mavlink_APM` to `Mavlink_PX4`.
 
 ### 3. Motor Configuration & Reversal
@@ -109,6 +109,10 @@ By default, PX4 expects GPS data on the GPS 2 port. To use it for the ELRS recei
 *   Configure your flight mode switch to include **Position**, **Manual**, and **Position Slow**. *(Safety Tip: Always have Manual mode easily accessible to quickly regain control or disarm in an emergency).*
 *   Calibrate the compass, gyroscope, and accelerometer in QGC. Ensure the flight controller's forward arrow aligns with the physical front of the drone.
 
+### Extra notes
+*   IMPORTANT: Please ensure the ground has texture and is NOT smooth, or else the optical sensor will not be able to detect x-y movement from the ground texture
+*   Turn on the radio controller and put it in ELRS mode before turning the drone for easier binding.
+*   It is suggested to setup a Tailscale VPN network to SSH into the Raspberry Pi since the university Wi-Fi firewall blocks direct SSH. 
 ---
 
 ## QGC Parameter Reference
