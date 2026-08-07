@@ -35,9 +35,20 @@ class HoverNode(Node):
         
         # State Machine Variables
         self.state = 'GROUND' # GROUND, TAKING_OFF, HOVERING, LANDING
-        self.target_z = 0.0
-        self.current_z = 0.0
 
+        # Target Positions and Yaw
+        self.target_x = 0.0
+        self.target_y = 0.0
+        self.target_z = 0.0
+        self.target_yaw = 0.0
+        
+        # Current Positions and Yaw
+        self.current_x = 0.0
+        self.current_y = 0.0
+        self.current_z = 0.0
+        self.current_yaw = 0.0
+        self.has_position_lock = False
+        
         # Servo Setup
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(SERVO_PIN, GPIO.OUT)
@@ -109,6 +120,7 @@ class HoverNode(Node):
             self.target_x = self.current_x
             self.target_y = self.current_y
             self.target_z = -1.0
+            self.target_yaw = self.current_yaw
             self.state = 'TAKING_OFF'
 
             # Send commands to arm and switch to offboard mode
