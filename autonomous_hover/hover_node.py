@@ -48,7 +48,7 @@ class HoverNode(Node):
         self.current_z = 0.0
         self.current_yaw = 0.0
         self.has_position_lock = False
-        
+
         # Servo Setup
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(SERVO_PIN, GPIO.OUT)
@@ -86,10 +86,9 @@ class HoverNode(Node):
             self.get_logger().info("Hovering stably at 1m. Ready for next command.")
 
         # Check if we reached the ground
-        elif self.state == 'LANDING' and self.current_z >= -0.2:
+        elif self.state == 'LANDING' and self.current_z >= -0.1:
             self.state = 'GROUND'
             self.get_logger().info("Landing stably. Disarming.")
-            self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, 0.0)
 
     def key_listener(self):
         # Background thread to listen for keyboard inputs without blocking ROS timer
@@ -136,8 +135,8 @@ class HoverNode(Node):
 
         elif self.state == 'HOVERING':
             self.get_logger().info("SPACEBAR Pressed: Landing")
-            self.target_z = 0.0
             self.state = 'LANDING'
+            self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_DO_SET_MODE, 1.0, 4.0, 6.0)
 
         else:
             self.get_logger().warn(f"Ignoring input. Drone is currently {self.state}...")
@@ -195,11 +194,12 @@ class HoverNode(Node):
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self.trajectory_setpoint_publisher.publish(msg)
 
-    def publish_vehicle_command(self, command, param1=0.0, param2=0.0):
+    def publish_vehicle_command(self, command, param1=0.0, param2=0.0, param3=0.0):
         msg = VehicleCommand()
         msg.command = command
-        msg.param1 = param1
-        msg.param2 = param2
+        msg.param1 = float(param1)
+        msg.param2 = float(param2)
+        msg.param3 = float(param3)
         msg.target_system = 1
         msg.target_component = 1
         msg.source_system = 1
