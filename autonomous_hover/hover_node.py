@@ -56,7 +56,7 @@ class HoverNode(Node):
         self.current_duty = BASE_PWM_DUTY
         self.servo_pwm.start(self.current_duty)
 
-        # Timer running at 10Hz 
+        # Timer running at 20Hz (0.05s) - PX4 prefers >= 20Hz for offboard mode
         self.timer = self.create_timer(0.05, self.timer_callback)
 
         # Keyboard Listener Setup
@@ -69,15 +69,21 @@ class HoverNode(Node):
     def timer_callback(self):
         # Constantly publish OffboardControlMode and TrajectorySetpoint
         self.publish_offboard_control_mode()
-        self.publish_trajectory_setpoint(self.target_z)
+        # Pass X, Y, Z, and Yaw to the publisher
+        self.publish_trajectory_setpoint(self.target_x, self.target_y, self.target_z, self.target_yaw)
         
     def pos_callback(self, msg):
+        # Update current X, Y, Z, and Yaw (heading) from the flight controller
+        self.current_x = msg.x
+        self.current_y = msg.y
         self.current_z = msg.z
+        self.current_yaw = msg.heading
+        self.has_position_lock = True
 
         # Check if we reached hover altitude
         if self.state == 'TAKING_OFF' and self.current_z <= -0.9:
             self.state = 'HOVERING'
-            self.get_logger().info("Hovering stably at 2m. Ready for next command.")
+            self.get_logger().info("Hovering stably at 1m. Ready for next command.")
 
         # Check if we reached the ground
         elif self.state == 'LANDING' and self.current_z >= -0.2:
@@ -112,15 +118,16 @@ class HoverNode(Node):
     def handle_spacebar(self):
         if self.state == 'GROUND':
             if not self.has_position_lock:
-                self.get_logger().warn("Cannot take off: No local position lock yet")
+                self.get_logger().warn("Cannot take off: No local position lock yet. Waiting for EKF...")
                 return
 
             self.get_logger().info("SPACEBAR Pressed: Taking Off")
             
+            # CRITICAL: Lock the target X, Y, and YAW to the CURRENT state so it goes straight up without rotating
             self.target_x = self.current_x
             self.target_y = self.current_y
-            self.target_z = -1.0
             self.target_yaw = self.current_yaw
+            self.target_z = -1.0
             self.state = 'TAKING_OFF'
 
             # Send commands to arm and switch to offboard mode
@@ -156,11 +163,16 @@ class HoverNode(Node):
     def handle_enter(self):
         self.get_logger().error("KILL SWITCH ACTIVATED! DISARMING IMMEDIATELY")
         self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, 0.0)
-        self.target_z = 0.0
+        
+        # Reset targets to current position so it doesn't do anything crazy if re-armed
+        self.target_x = self.current_x
+        self.target_y = self.current_y
+        self.target_z = self.current_z
+        self.target_yaw = self.current_yaw
         self.state = 'GROUND'
 
     def restore_terminal(self):
-        # Restores standard terminal behavior so consolde doesn't break on exit
+        # Restores standard terminal behavior so console doesn't break on exit
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_terminal_settings)
 
     # PX4 Message Publishers
@@ -174,10 +186,12 @@ class HoverNode(Node):
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self.offboard_control_mode_publisher.publish(msg)
 
-    def publish_trajectory_setpoint(self, target_z):
+    def publish_trajectory_setpoint(self, target_x, target_y, target_z, target_yaw):
         msg = TrajectorySetpoint()
-        msg.position = [0.0, 0.0, target_z]
-        msg.yaw = 0.0
+        # Use the dynamically updated X and Y targets
+        msg.position = [target_x, target_y, target_z]
+        # Use the dynamically updated Yaw target
+        msg.yaw = target_yaw
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         self.trajectory_setpoint_publisher.publish(msg)
 
