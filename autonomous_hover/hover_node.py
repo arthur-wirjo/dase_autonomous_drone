@@ -9,6 +9,7 @@ import select
 import termios
 import tty
 import threading
+import math
 import RPi.GPIO as GPIO
 
 SERVO_PIN = 23
@@ -40,13 +41,12 @@ class HoverNode(Node):
         self.target_x = 0.0
         self.target_y = 0.0
         self.target_z = 0.0
-        self.target_yaw = 0.0
+        self.target_yaw = math.nan
         
-        # Current Positions and Yaw
+        # Current Positions
         self.current_x = 0.0
         self.current_y = 0.0
         self.current_z = 0.0
-        self.current_yaw = 0.0
         self.has_position_lock = False
 
         # Servo Setup
@@ -73,11 +73,10 @@ class HoverNode(Node):
         self.publish_trajectory_setpoint(self.target_x, self.target_y, self.target_z, self.target_yaw)
         
     def pos_callback(self, msg):
-        # Update current X, Y, Z, and Yaw (heading) from the flight controller
+        # Update current X, Y, Z, and from the flight controller
         self.current_x = msg.x
         self.current_y = msg.y
         self.current_z = msg.z
-        self.current_yaw = msg.heading
         self.has_position_lock = True
 
         # Check if we reached hover altitude
@@ -122,10 +121,9 @@ class HoverNode(Node):
 
             self.get_logger().info("SPACEBAR Pressed: Taking Off")
             
-            # CRITICAL: Lock the target X, Y, and YAW to the CURRENT state so it goes straight up without rotating
+            # Lock the target X and Y to the CURRENT state so it goes straight up without rotating
             self.target_x = self.current_x
             self.target_y = self.current_y
-            self.target_yaw = self.current_yaw
             self.target_z = -1.0
             self.state = 'TAKING_OFF'
 
@@ -161,13 +159,12 @@ class HoverNode(Node):
     
     def handle_enter(self):
         self.get_logger().error("KILL SWITCH ACTIVATED! DISARMING IMMEDIATELY")
-        self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, 0.0)
+        self.publish_vehicle_command(VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, 0.0, 21196.0)
         
         # Reset targets to current position so it doesn't do anything crazy if re-armed
         self.target_x = self.current_x
         self.target_y = self.current_y
         self.target_z = self.current_z
-        self.target_yaw = self.current_yaw
         self.state = 'GROUND'
 
     def restore_terminal(self):
