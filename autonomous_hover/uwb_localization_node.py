@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from px4_msgs.msg import VehicleVisualOdometry
+from px4_msgs.msg import VehicleOdometry
 import serial
 import struct
 import numpy as np
@@ -29,10 +29,10 @@ class UWBLocalizationNode(Node):
 
         # Anchor coordinate in ENU: X = right, Y = forward, Z = up
         self.ANCHORS_ENU = {
-            1: np.array([-1.5, -1.5, 0]),
-            2: np.array([1.5, -1.5, 0]),
-            3: np.array([-1.5, 1.5, 1.94]),
-            4: np.array([1.5, 1.435, 1.84])
+            1: np.array([-1.5, -1.5, 0]), # bottom left
+            2: np.array([1.5, -1.5, 0]), # bottom right
+            3: np.array([-1.5, 1.5, 1.94]), # top left
+            4: np.array([1.5, 1.435, 1.84]) # top right
         } 
 
         self.filters = {
@@ -51,7 +51,7 @@ class UWBLocalizationNode(Node):
 
         self.last_known_pos = np.array([0.0, 0.0, 1.0])
 
-        self.odom_pub = self.create_publisher(VehicleVisualOdometry, '/fmu/in/vehicle_visual_odometry', 10)
+        self.odom_pub = self.create_publisher(VehicleOdometry, '/fmu/in/vehicle_visual_odometry', 10)
 
         self.serial_thread = threading.Thread(target=self.read_serial_data)
         self.serial_thread.daemon = True
@@ -84,29 +84,27 @@ class UWBLocalizationNode(Node):
         return None
 
     def publish_to_px4(self, pos_enu):
-        msg = VehicleVisualOdometry()
+        msg = VehicleOdometry()
 
         msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         msg.timestamp_sample = msg.timestamp
 
-        # local frame 0 is NED
-        msg.local_frame = 0 
+        # NED frame
+        msg.pose_frame = 1
 
         # convert ENU to NED coordinates
-        msg.x = float(pos_enu[1]) # X_NED = Y_ENU
-        msg.y = float(pos_enu[0]) # Y_NED = X_ENU
-        msg.z = float(-pos_enu[2]) # Z_NED = -Z_ENU
+        msg.position = [
+            float(pos_enu[1]), # X_NED = Y_ENU
+            float(pos_enu[0]), # Y_NED = X_ENU
+            float(-pos_enu[2]), # Z_NED = -Z_ENU
+        ]
 
         # no orientation so set quaternions to NaN so EKF ignore them
         msg.q = [float('nan'), float('nan'), float('nan'), float('nan')]
-        msg.q_offset = [float('nan'), float('nan'), float('nan'), float('nan')]
 
-        msg.vx = float('nan')
-        msg.vy = float('nan')
-        msg.vz = float('nan')
-        msg.rollspeed = float('nan')
-        msg.pitchspeed = float('nan')
-        msg.yawspeed = float('nan')
+        msg.velocity_frame = 0
+        msg.velocity = [float('nan'), float('nan'), float('nan')]
+        msg.angular_velocity = [float('nan'), float('nan'), float('nan')]
 
         # can adjust position variance later where lower = trust data more
         msg.position_variance = [0.05, 0.05, 0.1]
@@ -114,7 +112,7 @@ class UWBLocalizationNode(Node):
         msg.velocity_variance = [float('nan'), float('nan'), float('nan')]
 
         self.odom_pub.publish(msg)
-        self.get_logger().info(f"Published NED: X:{msg.x:.2f}, Y:{msg.y:.2f}, Z:{msg.z:.2f}")
+        self.get_logger().info(f"Published NED: X:{msg.position[0]:.2f}, Y:{msg.position[1]:.2f}, Z:{msg.position[2]:.2f}")
 
     def read_serial_data(self):
         try:
