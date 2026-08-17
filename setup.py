@@ -24,7 +24,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'hover_node = autonomous_hover.hover_node:main'
+            'hover_node = autonomous_hover.hover_node:main',
+            'uwb_localization = autonomous_hover.uwb_localization_node:main'
         ],
     },
 )

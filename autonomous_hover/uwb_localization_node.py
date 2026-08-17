@@ -113,6 +113,7 @@ class UWBLocalizationNode(Node):
 
         self.odom_pub.publish(msg)
         self.get_logger().info(f"Published NED: X:{msg.position[0]:.2f}, Y:{msg.position[1]:.2f}, Z:{msg.position[2]:.2f}")
+        print("hi")
 
     def read_serial_data(self):
         try:

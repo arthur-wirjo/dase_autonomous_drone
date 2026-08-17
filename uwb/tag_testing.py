@@ -48,7 +48,7 @@ def main():
                         # unpack 32 byte chunk to 8 little-endian 32-bit integers
                         ranges_mm = struct.unpack('<8i', raw_ranges_bytes)
                         output_str = ""
-                        for anchor_id in range(1, 4):
+                        for anchor_id in range(1, 5):
                             raw_m = ranges_mm[anchor_id] / 1000.0 # convert milimeter to meters
                             if raw_m > 0:
                                 filtered_m = filters[anchor_id].update(raw_m)
