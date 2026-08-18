@@ -49,7 +49,7 @@ class UWBLocalizationNode(Node):
             4: None
         }
 
-        self.last_known_pos = np.array([0.0, 0.0, 1.0])
+        self.last_known_pos = np.array([0.0, 0.0, 0.1])
 
         self.odom_pub = self.create_publisher(VehicleOdometry, '/fmu/in/vehicle_visual_odometry', 10)
 
@@ -59,6 +59,7 @@ class UWBLocalizationNode(Node):
 
     def calculate_position(self):
         if any(d is None for d in self.latest_distances.values()):
+            self.get_logger().error("some anchors are not connected")
             return None
 
         def error_function(target_pos):
@@ -107,13 +108,12 @@ class UWBLocalizationNode(Node):
         msg.angular_velocity = [float('nan'), float('nan'), float('nan')]
 
         # can adjust position variance later where lower = trust data more
-        msg.position_variance = [0.05, 0.05, 0.1]
+        msg.position_variance = [0.1, 0.1, 100.0]
         msg.orientation_variance = [float('nan'), float('nan'), float('nan')]
         msg.velocity_variance = [float('nan'), float('nan'), float('nan')]
 
         self.odom_pub.publish(msg)
         self.get_logger().info(f"Published NED: X:{msg.position[0]:.2f}, Y:{msg.position[1]:.2f}, Z:{msg.position[2]:.2f}")
-        print("hi")
 
     def read_serial_data(self):
         try:
