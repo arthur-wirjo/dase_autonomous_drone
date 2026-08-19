@@ -60,6 +60,13 @@ This repository contains the setup, configuration, and execution documentation f
     colcon build
     source install/setup.bash
     ```
+3.  **Camera & Streaming Prerequisites:**
+    *   Install FFmpeg on both the Host PC and the Raspberry Pi: 
+        ```bash
+        sudo apt update
+        sudo apt install ffmpeg
+        ```
+    *   If starting with a fresh Raspberry Pi, you must configure the OS to recognize the camera (especially Camera Module v3 on Ubuntu 24.04). Follow this guide: [How I set up the Raspberry Pi Camera v3 on a Raspberry Pi 5 running Ubuntu 24.04](https://medium.com/@arnav04verma/how-i-set-up-the-raspberry-pi-camera-v3-on-a-raspberry-pi-5-running-ubuntu-24-04-7563d1c61a3b)
 
 ---
 
@@ -268,3 +275,42 @@ Ensure the following parameters are set in QGroundControl. Reboot the flight con
     ```bash
     ros2 run autonomous_hover hover_node
     ```
+---
+
+## Live Video Streaming (Raspberry Pi Camera)
+
+To monitor the drone's perspective during flight, you can stream video from the Raspberry Pi Camera to your Host PC using `FFmpeg`. The repository includes bash scripts for two different streaming modes depending on your network conditions.
+
+**IMPORTANT NOTE:** The scripts use hardcoded IP addresses (e.g., Tailscale VPN IPs). Before running them, open the scripts and replace the IP addresses with your actual Host PC and Drone IP addresses.
+
+### Mode 1: Fast Camera (Low Latency UDP)
+Best for real-time FPV viewing. It uses the `libx264` codec with ultrafast presets over UDP.
+
+1.  **On the Drone (Sender):**
+    Edit `run_fast_camera.sh` to include your **Host PC's IP address**, then run:
+    ```bash
+    ./dase_autonomous_drone/bash_scripts/run_fast_camera.sh
+    ```
+    *(Under the hood, this runs: `rpicam-vid -t 0 --codec yuv420 --width 1280 --height 720 --framerate 30 -o - | ffmpeg -f rawvideo -pix_fmt yuv420p -s 1280x720 -r 30 -i - -c:v libx264 -preset ultrafast -tune zerolatency -f mpegts udp://<HOST_IP>:8888`)*
+
+2.  **On the Host PC (Receiver):**
+    ```bash
+    ./dase_autonomous_drone/bash_scripts/recieve_fast_camera.sh
+    ```
+    *(Under the hood, this runs: `ffplay -fflags nobuffer -flags low_delay -framedrop udp://0.0.0.0:8888`)*
+
+### Mode 2: Smooth Camera (High Quality TCP)
+Best for stable, high-quality recording or viewing where a slight delay is acceptable. It uses MJPEG over TCP.
+
+1.  **On the Drone (Sender):**
+    ```bash
+    ./dase_autonomous_drone/bash_scripts/run_smooth_camera.sh
+    ```
+    *(Under the hood, this runs: `rpicam-vid -t 0 --codec mjpeg --width 1280 --height 720 --framerate 30 --listen -o tcp://0.0.0.0:8888`)*
+
+2.  **On the Host PC (Receiver):**
+    Edit `recieve_smooth_camera.sh` to include your **Drone's IP address**, then run:
+    ```bash
+    ./dase_autonomous_drone/bash_scripts/recieve_smooth_camera.sh
+    ```
+    *(Under the hood, this runs: `ffplay -f mjpeg -fflags nobuffer -flags low_delay -framedrop tcp://<DRONE_IP>:8888`)*
