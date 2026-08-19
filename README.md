@@ -3,7 +3,7 @@
 
 ## DASE Autonomous Drone
 
-This repository contains the setup, configuration, and execution documentation for an autonomous quadcopter powered by a Pixhawk 6C Mini (PX4), a Raspberry Pi 5 flight computer (ROS 2 via Micro-XRCE-DDS), and an MTF-01P Optical Flow/Lidar sensor for GPS-denied indoor navigation.
+This repository contains the setup, configuration, and execution documentation for an autonomous quadcopter powered by a Pixhawk 6C Mini (PX4), a Raspberry Pi 5 flight computer (ROS 2 via Micro-XRCE-DDS), and an MTF-01P Optical Flow/Lidar sensor + Ultra-Wideband (UWB) modules for GPS-denied indoor navigation.
 
 ## Hardware Architecture
 
@@ -19,6 +19,7 @@ This repository contains the setup, configuration, and execution documentation f
 *   **Propulsion:** Generic 5-inch FPV drone motors and propellers
 *   **Battery:** Generic 4S Li-Po Battery
 *   **Accessories:** USB to TTL Serial Adapter
+*   **UWB Modules:** AI-Thinker BU03 Kit (x5) 
 
 ---
 
@@ -113,6 +114,117 @@ By default, PX4 expects GPS data on the GPS 2 port. To use it for the ELRS recei
 *   IMPORTANT: Please ensure the ground has texture and is NOT smooth, or else the optical sensor will not be able to detect x-y movement from the ground texture
 *   Turn on the radio controller and put it in ELRS mode before turning the drone for easier binding.
 *   It is suggested to setup a Tailscale VPN network to SSH into the Raspberry Pi since the university Wi-Fi firewall blocks direct SSH. 
+
+---
+
+## UWB Global Localization Setup
+
+Optical flow and Z-axis Lidar sensors are excellent for *relative* localization, but they drift over time. To achieve true *global* localization indoors, this project uses Ultra-Wideband (UWB) modules. 
+
+In the context of GPS-denied locations such as factories or warehouses, UWB is an appealing option because:
+*   It does not require direct line of sight.
+*   The sensor is very lightweight and less computationally heavy compared to Lidar SLAM.
+*   It is relatively inexpensive.
+
+**Hardware Used:** 5x AI-Thinker BU03 UWB development boards (1 configured as a Tag, 4 configured as Anchors). The system uses the Two-Way Ranging (TWR) algorithm to calculate the distance between the Tag and each Anchor.
+
+### 1. Prerequisites
+*   Get a serial monitor software to communicate with the UWB modules (e.g., **PuTTY** for Windows or **CuteCom** for Linux).
+*   Ensure the baud rate is configured to `115200` and the line terminator is set to `CR/LF`.
+*   Connect the module to your computer using the **TTL USB-C port** (not the standard USB port) for AT command configuration.
+*   **Important:** Before sending any configuration commands, always send `AT` to verify the connection (it should return `OK`). After changing configurations, you **must** send `AT+SAVE` or the module will revert upon restart.
+*   *Reference Links:* [Official UWB Documentation](https://docs.ai-thinker.com/en/uwb_1/index.html) | [Full AT Command List](https://aithinker-static.oss-cn-shenzhen.aliyuncs.com/docs/_media_old/BU03_BU04_AT_command_en_v1.0.6.pdf)
+
+### 2. Configure Each UWB Module
+By default, the modules should be in TWR mode. If not, set it using `AT+SETUWBMODE=0`.
+
+The template command for configuring the UWB modules is `AT+SETCFG=X1,X2,X3,X4`:
+*   `X1`: ID (0-10)
+*   `X2`: Role (0 = Tag, 1 = Anchor)
+*   `X3`: Channel (0 = Channel 9, 1 = Channel 5)
+*   `X4`: Group (0-255)
+
+Additionally, we must reset the linear fitting parameters to `y = 1x + 0` before calibration using `AT+SETDEV=X1,X2,X3,X4,X5,a,b,X8,X9`.
+
+Configure your 5 modules one by one using the TTL port:
+
+**Module 1 (The Tag):**
+```text
+AT+SETCFG=0,0,1,1
+AT+SAVE
+```
+
+**Module 2 (Anchor 1):**
+```text
+AT+SETCFG=1,1,1,1
+AT+SETDEV=10,16336,1.0,0.018,0.642,1,0,0,0
+AT+SAVE
+```
+
+**Module 3 (Anchor 2):**
+```text
+AT+SETCFG=2,1,1,1
+AT+SETDEV=10,16336,1.0,0.018,0.642,1,0,0,0
+AT+SAVE
+```
+
+**Module 4 (Anchor 3):**
+```text
+AT+SETCFG=3,1,1,1
+AT+SETDEV=10,16336,1.0,0.018,0.642,1,0,0,0
+AT+SAVE
+```
+
+**Module 5 (Anchor 4):**
+```text
+AT+SETCFG=4,1,1,1
+AT+SETDEV=10,16336,1.0,0.018,0.642,1,0,0,0
+AT+SAVE
+```
+
+### 3. Calibrating Anchors (Linear Fitting)
+*   Download the Excel calibration sheet: [English Version](https://cdn.shopify.com/s/files/1/0621/0050/4774/files/BU03_data_calibration.xlsx?v=1756780996) | [Chinese Version](https://aithinker-static.oss-cn-shenzhen.aliyuncs.com/docs/_media_old/d_%E6%95%B0%E6%8D%AE%E6%A0%87%E5%AE%9A%E6%A8%A1%E6%9D%BF.xlsx)
+*   Connect the Raspberry Pi to the **Tag** module through its **(USB) USB-C port** (not the TTL port).
+*   Ensure the Raspberry Pi detects the Tag module at `/dev/ttyACM0` by running `ls /dev/tty*` in the terminal.
+
+ **Note for Ubuntu/Pi Users:** If you cannot see `/dev/ttyACM0`, it is likely conflicting with a background service called `brltty` (a braille display driver). Fix this by running `sudo apt remove brltty`, then replug the USB cable.
+
+*   Power on all the Anchors. They should display their sensed distance from the Tag on their screens.
+*   In the Excel sheet, plot the *actual physical distance* between the Tag and an Anchor against the *sensed distance* in 20cm intervals (up to the max distance of your flight area).
+
+**Note:** If the Anchor's screen values fluctuate too much, run the `dase_autonomous_drone/uwb/tag_testing.py` script on the Pi to view stabilized distances using an Exponential Moving Average (EMA) filter. You can tune the `alpha` variable in the script for more/less smoothing.
+
+*   After logging the data, the Excel sheet will generate a linear equation: `y = ax + b`.
+*   Plug the Tag back into the TTL port and reconfigure each Anchor with its new `a` and `b` parameters:
+    ```text
+    AT+SETDEV=10,16336,1.0,0.018,0.642,a,b,0,0
+    AT+SAVE
+    ```
+
+### 4. Running UWB Global Localization in ROS 2
+Before running the node, you must configure the physical locations of your Anchors in the flight space.
+1.  Open `dase_autonomous_drone/autonomous_hover/uwb_localization_node.py`.
+2.  In the `UWBLocalizationNode` initialization, edit the `self.ANCHORS_ENU` dictionary to match the exact `(X, Y, Z)` coordinates of your Anchors in meters (using the ENU coordinate frame: X=Right, Y=Forward, Z=Up):
+    ```python
+    self.ANCHORS_ENU = {
+        1: np.array([-1.5, -1.5, 0]), 
+        2: np.array([1.5, -1.5, 0]), 
+        3: np.array([-1.5, 1.5, 1.94]), 
+        4: np.array([1.5, 1.435, 1.84])
+    }
+    ```
+3.  Rebuild your ROS 2 workspace:
+    ```bash
+    cd ~/ros2_ws
+    colcon build --packages-select autonomous_hover
+    source install/setup.bash
+    ```
+4.  Run the localization node:
+    ```bash
+    ros2 run autonomous_hover uwb_localization
+    ```
+    *(Alternatively, you can execute the bash script located at `dase_autonomous_drone/bash_scripts/run_uwb_localization.sh`)*
+
 ---
 
 ## QGC Parameter Reference
