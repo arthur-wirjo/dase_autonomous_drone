@@ -29,10 +29,10 @@ class UWBLocalizationNode(Node):
 
         # Anchor coordinate in ENU: X = right, Y = forward, Z = up
         self.ANCHORS_ENU = {
-            1: np.array([0, 0, 0.24]), # bottom left
-            2: np.array([0, 2.58, 1.22]), # bottom right
-            3: np.array([4.095, 3.43, 1.94]), # top left
-            4: np.array([3.94, 0, 0.15]) # top right
+            1: np.array([0, 0, 1.21]), # bottom left
+            2: np.array([3.65, 0, 0.13]), # bottom right
+            3: np.array([0.35, 2.75, 2.14]), # top left
+            4: np.array([3.66, 3.42, 1.21]) # top right
         } 
 
         self.filters = {
