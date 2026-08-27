@@ -10,6 +10,7 @@ This repository contains the setup, configuration, and execution documentation f
 *   **Flight Controller:** Pixhawk 6C Mini (Holybro)
 *   **ESC:** Tekko32 AM32 4-in-1 ESC (Holybro)
 *   **Flight Computer:** Raspberry Pi 5 (Ubuntu 24.04)
+*   **Camera:** Raspberry Pi Camera Module 3
 *   **Power Distribution:**
     *   **PDB 1:** PM06 (Powers the flight controller and ESC)
     *   **PDB 2:** Generic 5V/5A BEC (Powers the Raspberry Pi 5)
@@ -19,7 +20,8 @@ This repository contains the setup, configuration, and execution documentation f
 *   **Propulsion:** Generic 5-inch FPV drone motors and propellers
 *   **Battery:** Generic 4S Li-Po Battery
 *   **Accessories:** USB to TTL Serial Adapter
-*   **UWB Modules:** AI-Thinker BU03 Kit (x5) 
+*   **UWB Modules:** AI-Thinker BU03 Kit (x5)
+*   **Servo:** MG90 (For moving the camera) 
 
 ---
 
