@@ -314,3 +314,11 @@ Best for stable, high-quality recording or viewing where a slight delay is accep
     ./dase_autonomous_drone/bash_scripts/recieve_smooth_camera.sh
     ```
     *(Under the hood, this runs: `ffplay -f mjpeg -fflags nobuffer -flags low_delay -framedrop tcp://<DRONE_IP>:8888`)*
+    
+### Notes for next students continuing the project:
+*   Although the drone can hover and maintain position relatively well for some time
+*   It's yaw still drifts overtime since UWB modules cannot detect yaw, optical flow sensor drifts, and IMU drifts
+*   Resulting in the drones yaw to drift overtime and hover more unstably
+*   The DASE department has some ORADAR MS200p 2D lidar sensors
+*   They are relatively light and can be used to correct for yaw drift and have more stable x and y axis localization
+*   The next goal of this project is to have the drone be able to stably hover indefinietly and correct any sort of drift in GPS-denied situation
