@@ -325,4 +325,5 @@ Best for stable, high-quality recording or viewing where a slight delay is accep
 *   Resulting in the drones yaw to drift overtime and hover more unstably
 *   The DASE department has some ORADAR MS200p 2D lidar sensors
 *   They are relatively light and can be used to correct for yaw drift and have more stable x and y axis localization
+*   Another possible solution is to use the BU04 UWB module as the tag instead and use PDoA algorithm instead of TWR for UWB localization
 *   The next goal of this project is to have the drone be able to stably hover indefinietly and correct any sort of drift in GPS-denied situation
