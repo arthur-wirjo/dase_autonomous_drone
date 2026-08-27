@@ -245,8 +245,10 @@ Ensure the following parameters are set in QGroundControl. Reboot the flight con
 | `MAV_0_MODE` | **0 (Normal)** | Standard MAVLink communication. |
 | `SER_TEL1_BAUD` | **115200** | Matches the MTF-01P baud rate. |
 | `MAV_PROTO_VER` | **1** | Forces MAVLink v1. *Note: QGC may show a warning expecting v2; this is normal and can be safely ignored.* |
-| `EKF2_GPS_CTRL` | **0 (Disabled)** | Disables GPS fusion for indoor flight. |
 | `SYS_HAS_GPS` | **0 (Disabled)** | Tells the system no GPS is attached. |
+| `SYS_HAS_MAG` | **0 (Disabled)** | Tells the system no Compass is attached (prevents pre-flight failures underground). |
+| `EKF2_GPS_CTRL` | **0 (Disabled)** | Disables GPS fusion for indoor flight. |
+| `EKF2_MAG_TYPE` | **5 (None)** | Forces the EKF2 to ignore magnetic fields and rely entirely on the gyro for heading. |
 | `EKF2_HGT_REF` | **Range sensor** | Uses the Lidar for altitude estimation. |
 | `EKF2_OF_CTRL` | **Enabled** | Fuses Optical Flow data for horizontal velocity. |
 | `EKF2_RNG_CTRL` | **Enabled** | Fuses Rangefinder data. |
